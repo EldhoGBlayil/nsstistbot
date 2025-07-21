@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSS Intelligent Chatbot</title>
+    
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* NSS Color Variables */
+        :root {
+            --nss-blue: #002366;
+            --nss-red: #FF2C2C;
+            --nss-white: #FFFFFF;
+            --nss-light-blue: #f0f4f8;
+        }
+
+        /* Subtle background watermark pattern */
+        .background-watermark {
+            background-color: var(--nss-white);
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(0, 35, 102, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 80% 90%, rgba(0, 35, 102, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 50% 50%, rgba(0, 35, 102, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* Custom button style */
+        .nss-button {
+            border: 2px solid var(--nss-red);
+            color: var(--nss-red);
+            background-color: var(--nss-white);
+            transition: all 0.3s ease;
+        }
+
+        .nss-button:hover {
+            background-color: var(--nss-blue);
+            color: var(--nss-white);
+            border-color: var(--nss-blue);
+        }
+
+        /* Scrollbar styling */
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: var(--nss-light-blue);
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background-color: var(--nss-blue);
+            border-radius: 10px;
+        }
+
+        /* Typing indicator animation */
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #AAB8C2;
+            display: inline-block;
+            border-radius: 50%;
+            animation: bounce 1.3s infinite;
+        }
+        .typing-indicator span:nth-of-type(2) {
+            animation-delay: 0.15s;
+        }
+        .typing-indicator span:nth-of-type(3) {
+            animation-delay: 0.3s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        
+        /* Voice recognition pulse animation */
+        .mic-active {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 44, 44, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 44, 44, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 44, 44, 0); }
+        }
+
+        /* Gemini button loading spinner */
+        .spinner {
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--nss-blue);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div id="chatbot-container" class="w-full max-w-lg h-[95vh] max-h-[800px] flex flex-col bg-white shadow-2xl rounded-2xl overflow-hidden background-watermark">
+        
+        <!-- Header -->
+        <header class="bg-white/80 backdrop-blur-sm p-4 border-b border-gray-200 flex items-center justify-between shadow-sm">
+            <div class="flex items-center space-x-3">
+                <img src="nss.jpg" alt="NSS Logo" class="h-12 w-12 rounded-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/48x48/002366/FFFFFF?text=NSS';">
+                <div>
+                    <h1 class="text-lg font-bold text-[--nss-blue]">NSS Tist Bot</h1>
+                    <p id="slogan" class="text-xs text-gray-500">മനസ് നന്നാവട്ടെ – Let the Mind be Noble</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                 <button id="voice-output-toggle" class="p-2 rounded-full hover:bg-gray-200 text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.88 5.88a15 15 0 00-2.828 12.254M21 12a9 9 0 00-9-9" /></svg>
+                </button>
+                <button id="language-toggle" class="nss-button text-sm font-semibold py-1 px-3 rounded-full">
+                    English
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat Window -->
+        <main id="chat-window" class="flex-1 p-4 overflow-y-auto space-y-4">
+            <!-- Messages will be appended here -->
+        </main>
+
+        <!-- Quick Info Menu -->
+        <div class="p-2 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+            <div id="quick-info-container" class="flex justify-around">
+                <!-- Quick info buttons will be populated by JS -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <footer class="p-4 bg-white border-t border-gray-200">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="user-input" placeholder="Type an event idea & click the ✨" class="flex-1 w-full px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[--nss-blue]">
+                <button id="mic-button" class="p-3 rounded-full text-gray-500 hover:bg-red-100 hover:text-[--nss-red] transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                </button>
+                <button id="gemini-button" class="p-3 rounded-full bg-yellow-400 text-white hover:bg-yellow-500 transition-colors" title="Plan an Event with Gemini">
+                    ✨
+                </button>
+                <button id="send-button" class="p-3 rounded-full bg-[--nss-blue] text-white hover:bg-opacity-90 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM ELEMENTS ---
+            const chatWindow = document.getElementById('chat-window');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const micButton = document.getElementById('mic-button');
+            const geminiButton = document.getElementById('gemini-button');
+            const languageToggle = document.getElementById('language-toggle');
+            const voiceOutputToggle = document.getElementById('voice-output-toggle');
+            const quickInfoContainer = document.getElementById('quick-info-container');
+
+            // --- STATE ---
+            let currentLanguage = 'en';
+            let isVoiceOutputEnabled = true;
+            let isRecognizing = false;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+            }
+
+            // --- DATA & CONTENT ---
+
+            const quotes = [
+                "Arise, awake, and stop not till the goal is reached. - Swami Vivekananda",
+                "The best way to find yourself is to lose yourself in the service of others. - Mahatma Gandhi",
+                "You cannot believe in God until you believe in yourself. - Swami Vivekananda",
+                "Service which is rendered without joy helps neither the servant nor the served. - Mahatma Gandhi",
+                "Take up one idea. Make that one idea your life... this is the way to success. - Swami Vivekananda"
+            ];
+
+            const uiText = {
+                en: {
+                    langButton: "മലയാളം",
+                    inputPlaceholder: "Ask a question or type an event idea & click ✨",
+                    welcome: "Hello! I am the NSS Tist Bot. Ask me anything about NSS, or type an event idea and click the ✨ button to let me plan it for you!",
+                    quickInfo: [
+                        { text: "Events", icon: "📅", query: "Upcoming events" },
+                        { text: "Join NSS", icon: "🤝", query: "How to join NSS" },
+                        { text: "History", icon: "📖", query: "NSS History" },
+                        { text: "Gallery", icon: "🖼️", query: "Show me the gallery" }
+                    ]
+                },
+                ml: {
+                    langButton: "English",
+                    inputPlaceholder: "ചോദ്യം ചോദിക്കുക അല്ലെങ്കിൽ ഒരു ഇവന്റ് ആശയം ടൈപ്പ് ചെയ്ത് ✨ ക്ലിക്ക് ചെയ്യുക",
+                    welcome: "നമസ്കാരം! ഞാൻ NSS Tist Bot ആണ്. NSS-നെക്കുറിച്ച് എന്തും ചോദിക്കാം, അല്ലെങ്കിൽ ഒരു ഇവന്റ് ആശയം നൽകി ✨ ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ഞാൻ നിങ്ങൾക്കായി അത് പ്ലാൻ ചെയ്യാം!",
+                    quickInfo: [
+                        { text: "പരിപാടികൾ", icon: "📅", query: "വരാനിരിക്കുന്ന പരിപാടികൾ" },
+                        { text: "ചേരുക", icon: "🤝", query: "എങ്ങനെ NSS-ൽ ചേരാം" },
+                        { text: "ചരിത്രം", icon: "📖", query: "NSS ചരിത്രം" },
+                        { text: "ഗാലറി", icon: "🖼️", query: "ഗാലറി കാണിക്കൂ" }
+                    ]
+                }
+            };
+            
+            const knowledgeBase = {
+                en: {
+                    'default': "I'm not sure how to answer that. For event planning, type your idea and click the ✨ button. For general questions, please try rephrasing or use the Quick Info buttons.",
+                    'greeting': "Hello there! Ready to make a difference? Ask me a question or let's plan an event together!",
+                    'what is nss': "The National Service Scheme (NSS) is a Central Sector Scheme of Government of India, Ministry of Youth Affairs & Sports. It provides opportunity to the student youth of 11th & 12th Class of schools at +2 Board level and student youth of Technical Institution, Graduate & Post Graduate at colleges and University level of India to take part in various government led community service activities & programmes.",
+                    'how to join': "To join the NSS, you should contact the NSS Programme Officer at your school or college. Enrollment is typically done at the beginning of the academic year. It's a voluntary scheme, open to all students!",
+                    'motto': "The motto of National Service Scheme is 'NOT ME BUT YOU'. It reflects the essence of democratic living and upholds the need for selfless service and appreciation of the other person's point of view.",
+                    'history': "The NSS was launched in Gandhiji's Centenary year, 1969. It was a dream of Mahatma Gandhi that the youth of the country should be involved in the work of nation-building. The idea was first mooted in 1952, and after several committees and discussions, it was officially launched on 24th September 1969.",
+                    'duties|activities': "NSS volunteers undertake various activities such as cleanliness drives, blood donation camps, environmental protection campaigns like tree plantation, disaster management, and awareness programs on health, sanitation, and social issues. The two main types of activities are Regular Activities and Special Camping programmes.",
+                    'achievements': "NSS has numerous achievements! Volunteers have played a crucial role in national initiatives like Swachh Bharat Abhiyan, Digital India, and have been at the forefront of relief efforts during natural calamities. Every year, the best volunteers are honored with the NSS National Awards by the President of India.",
+                    'events': "Upcoming events often include national-level camps, Republic Day Parade camps, and special campaigns announced by the Ministry of Youth Affairs & Sports. For specific event details at your institution, please contact your NSS Programme Officer.",
+                    'gallery': "While I can't display a full gallery here, the official NSS website has a wonderful collection of photos showcasing the incredible work of our volunteers across the nation. It's truly inspiring!",
+                    'volunteer secretary|volunteer secretaries|secretary|secretaries': "The Volunteer Secretaries of NSS TIST are Rohit A and Sereena Joshy.",
+                    'program officer|programme officer|akhil krishnan': "The NSS TIST Program Officer is <strong>Akhil Krishnan M</strong>.",
+                    'senior mentor|niranjan s': "The Senior Mentor of NSS TIST is <strong>Niranjan S</strong>.",
+                },
+                ml: {
+                    'default': "ക്ഷമിക്കണം, എനിക്കത് മനസ്സിലായില്ല. ഇവന്റ് പ്ലാനിംഗിനായി, നിങ്ങളുടെ ആശയം ടൈപ്പ് ചെയ്ത് ✨ ബട്ടൺ ക്ലിക്ക് ചെയ്യുക. മറ്റ് ചോദ്യങ്ങൾക്ക്, ദയവായി ചോദ്യം മാറ്റി ചോദിക്കുകയോ ക്വിക്ക് ഇൻഫോ ബട്ടണുകൾ ഉപയോഗിക്കുകയോ ചെയ്യുക.",
+                    'greeting': "നമസ്കാരം! ഒരു മാറ്റം വരുത്താൻ തയ്യാറാണോ? എന്നോട് ഒരു ചോദ്യം ചോദിക്കൂ അല്ലെങ്കിൽ നമുക്ക് ഒരുമിച്ച് ഒരു പരിപാടി ആസൂത്രണം ചെയ്യാം!",
+                    'what is nss': "നാഷണൽ സർവീസ് സ്കീം (NSS) ഭാരത സർക്കാരിന്റെ യുവജനകാര്യ-കായിക മന്ത്രാലയത്തിന് കീഴിലുള്ള ഒരു കേന്ദ്ര പദ്ധതിയാണ്. ഇത് +2 തലത്തിലുള്ള സ്കൂൾ വിദ്യാർത്ഥികൾക്കും, കോളേജ്, സർവ്വകലാശാല തലത്തിലുള്ള വിദ്യാർത്ഥികൾക്കും വിവിധ സാമൂഹിക സേവന പ്രവർത്തനങ്ങളിലും പരിപാടികളിലും പങ്കെടുക്കാൻ അവസരം നൽകുന്നു.",
+                    'how to join|എങ്ങനെ ചേരാം': "NSS-ൽ ചേരുന്നതിന്, നിങ്ങളുടെ സ്കൂളിലെയോ കോളേജിലെയോ NSS പ്രോഗ്രാം ഓഫീസറുമായി ബന്ധപ്പെടുക. സാധാരണയായി അധ്യയന വർഷത്തിന്റെ തുടക്കത്തിലാണ് എൻറോൾമെന്റ് നടക്കുന്നത്. ഇത് എല്ലാ വിദ്യാർത്ഥികൾക്കും തുറന്ന ഒരു സന്നദ്ധ പദ്ധതിയാണ്!",
+                    'motto|മുദ്രാവാക്യം': "നാഷണൽ സർവീസ് സ്കീമിന്റെ മുദ്രാവാക്യം 'ഞാനല്ല, നീ' (NOT ME BUT YOU) എന്നതാണ്. ഇത് ജനാധിപത്യ ജീവിതത്തിന്റെ സത്തയെ പ്രതിഫലിപ്പിക്കുകയും നിസ്വാർത്ഥ സേവനത്തിന്റെ ആവശ്യകതയെ ഉയർത്തിപ്പിടിക്കുകയും ചെയ്യുന്നു.",
+                    'history|ചരിത്രം': "ഗാന്ധിജിയുടെ നൂറാം ജന്മവാർഷികമായ 1969-ലാണ് NSS ആരംഭിച്ചത്. രാജ്യത്തെ യുവാക്കൾ രാഷ്ട്ര നിർമ്മാണ പ്രവർത്തനങ്ങളിൽ പങ്കാളികളാകണം എന്നത് മഹാത്മാഗാന്ധിയുടെ ഒരു സ്വപ്നമായിരുന്നു. ഈ ആശയം 1952-ൽ ആദ്യമായി ചർച്ച ചെയ്യപ്പെടുകയും, നിരവധി കമ്മിറ്റികൾക്കും ചർച്ചകൾക്കും ശേഷം 1969 സെപ്റ്റംബർ 24-ന് ഔദ്യോഗികമായി സമാരംഭിക്കുകയും ചെയ്തു.",
+                    'duties|activities|പ്രവർത്തനങ്ങൾ': "ശുചീകരണ പ്രവർത്തനങ്ങൾ, രക്തദാന ക്യാമ്പുകൾ, വൃക്ഷത്തൈ നടീൽ പോലുള്ള പരിസ്ഥിതി സംരക്ഷണ പ്രവർത്തനങ്ങൾ, ദുരന്തനിവാരണം, ആരോഗ്യ്യം, ശുചിത്വം, സാമൂഹിക പ്രശ്നങ്ങൾ എന്നിവയെക്കുറിച്ചുള്ള ബോധവൽക്കരണ പരിപാടികൾ തുടങ്ങിയ വിവിധ പ്രവർത്തനങ്ങൾ NSS വോളന്റിയർമാർ ഏറ്റെടുക്കുന്നു.",
+                    'achievements|നേട്ടങ്ങൾ': "NSS-ന് നിരവധി നേട്ടങ്ങളുണ്ട്! സ്വച്ഛ് ഭാരത് അഭിയാൻ, ഡിജിറ്റൽ ഇന്ത്യ തുടങ്ങിയ ദേശീയ സംരംഭങ്ങളിൽ വോളന്റിയർമാർ നിർണായക പങ്ക് വഹിച്ചിട്ടുണ്ട്. എല്ലാ വർഷവും മികച്ച വോളന്റിയർമാരെ രാഷ്ട്രപതി NSS ദേശീയ അവാർഡുകൾ നൽകി ആദരിക്കുന്നു.",
+                    'events|പരിപാടികൾ': "വരാനിരിക്കുന്ന പരിപാടികളിൽ ദേശീയ തലത്തിലുള്ള ക്യാമ്പുകൾ, റിപ്പബ്ലിക് ദിന പരേഡ് ക്യാമ്പുകൾ, യുവജനകാര്യ-കായിക മന്ത്രാലയം പ്രഖ്യാപിക്കുന്ന പ്രത്യേക പ്രചാരണങ്ങൾ എന്നിവ ഉൾപ്പെടുന്നു. നിങ്ങളുടെ സ്ഥാപനത്തിലെ പരിപാടികളുടെ വിശദാംശങ്ങൾക്കായി, ദയവായി നിങ്ങളുടെ NSS പ്രോഗ്രാം ഓഫീസറുമായി ബന്ധപ്പെടുക.",
+                    'gallery|ഗാലറി': "എനിക്ക് ഇവിടെ ഒരു പൂർണ്ണ ഗാലറി പ്രദർശിപ്പിക്കാൻ കഴിയില്ല, പക്ഷേ ഔദ്യോഗിക NSS വെബ്സൈറ്റിൽ നമ്മുടെ വോളന്റിയർമാരുടെ അവിശ്വസനീയമായ പ്രവർത്തനങ്ങൾ കാണിക്കുന്ന ഫോട്ടോകളുടെ ഒരു അത്ഭുതകരമായ ശേഖരം ഉണ്ട്. അത് തീർച്ചയായും പ്രചോദനകരമാണ്!",
+                    'volunteer secretary|volunteer secretaries|secretary|secretaries': "NSS TIST-ന്റെ വോളന്റിയർ സെക്രട്ടറിമാർ <strong>റോഹിത് എ</strong>യും <strong>സെറീന ജോഷിയും</strong> ആണ്.",
+                    'program officer|programme officer|akhil krishnan': "NSS TIST-ന്റെ പ്രോഗ്രാം ഓഫീസർ <strong>അഖിൽ കൃഷ്ണൻ എം</strong> ആണ്.",
+                    'senior mentor|niranjan s': "NSS TIST-ന്റെ സീനിയർ മെന്റർ <strong>നിരഞ്ജൻ എസ്</strong> ആണ്.",
+                }
+            };
+
+            // --- FUNCTIONS ---
+
+            const addMessage = (text, sender, isHtml = false) => {
+                const messageElement = document.createElement('div');
+                messageElement.className = `flex w-full ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+                
+                const bubbleClass = sender === 'user' 
+                    ? 'bg-[--nss-red] text-white' 
+                    : 'bg-[--nss-blue] text-white';
+
+                messageElement.innerHTML = `
+                    <div class="max-w-xs md:max-w-md p-3 rounded-2xl ${bubbleClass} shadow-md">
+                        <div class="text-sm">${isHtml ? text : text.replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+                chatWindow.appendChild(messageElement);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                return messageElement;
+            };
+
+            const showTypingIndicator = () => {
+                const typingElement = document.createElement('div');
+                typingElement.id = 'typing-indicator';
+                typingElement.className = 'flex justify-start';
+                typingElement.innerHTML = `
+                    <div class="max-w-xs md:max-w-md p-3 rounded-2xl bg-gray-200 shadow-md">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                `;
+                chatWindow.appendChild(typingElement);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            };
+
+            const removeTypingIndicator = () => {
+                const indicator = document.getElementById('typing-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            };
+
+            const typeMessage = (text, isHtml = false) => {
+                showTypingIndicator();
+                setTimeout(() => {
+                    removeTypingIndicator();
+                    const messageElement = addMessage('', 'bot', isHtml);
+                    const bubble = messageElement.querySelector('.text-sm');
+                    
+                    if (isHtml) {
+                        bubble.innerHTML = text;
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                        if (isVoiceOutputEnabled) {
+                            // Create a plain text version for speech synthesis
+                            const plainText = new DOMParser().parseFromString(text, "text/html").documentElement.textContent;
+                            speakText(plainText);
+                        }
+                        return;
+                    }
+
+                    let i = 0;
+                    const typingSpeed = 20;
+
+                    function type() {
+                        if (i < text.length) {
+                            bubble.innerHTML += text.charAt(i);
+                            i++;
+                            chatWindow.scrollTop = chatWindow.scrollHeight;
+                            setTimeout(type, typingSpeed);
+                        } else {
+                            if (Math.random() < 0.3) {
+                                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+                                bubble.innerHTML += `<br><br><em class="text-xs opacity-80">"${randomQuote}"</em>`;
+                            }
+                            chatWindow.scrollTop = chatWindow.scrollHeight;
+                            if (isVoiceOutputEnabled) {
+                                speakText(text);
+                            }
+                        }
+                    }
+                    type();
+                }, 1000 + Math.random() * 500);
+            };
+
+            const speakText = (text) => {
+                if (!('speechSynthesis' in window) || !isVoiceOutputEnabled) return;
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text.split('<br>')[0]);
+                utterance.lang = currentLanguage === 'ml' ? 'ml-IN' : 'en-US';
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                window.speechSynthesis.speak(utterance);
+            };
+            
+            // --- GEMINI API FUNCTION ---
+            const planEventWithGemini = async (prompt) => {
+                const originalButtonContent = geminiButton.innerHTML;
+                geminiButton.innerHTML = '<div class="spinner"></div>';
+                geminiButton.disabled = true;
+
+                addMessage(`Planning an event for: "${prompt}"`, 'user');
+                showTypingIndicator();
+
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const fullPrompt = `You are an expert event planner for the National Service Scheme (NSS) in Kerala, India. Based on the following idea, create a detailed plan. The plan should include a creative event name, a short description, a detailed agenda with timings, and a list of required materials. Respond ONLY with a JSON object with these exact keys: "eventName", "description", "agenda", "materials". The agenda and materials should be arrays of strings. The event idea is: ${prompt}`;
+                
+                let chatHistory = [{ role: "user", parts: [{ text: fullPrompt }] }];
+                const payload = {
+                    contents: chatHistory,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "eventName": { "type": "STRING" },
+                                "description": { "type": "STRING" },
+                                "agenda": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                "materials": { "type": "ARRAY", "items": { "type": "STRING" } }
+                            },
+                            required: ["eventName", "description", "agenda", "materials"]
+                        }
+                    }
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts.length > 0) {
+                        const jsonText = result.candidates[0].content.parts[0].text;
+                        const plan = JSON.parse(jsonText);
+
+                        const formattedResponse = `
+                            <strong class="text-base block mb-2">${plan.eventName}</strong>
+                            <p class="mb-3">${plan.description}</p>
+                            <strong class="block mb-1">Agenda:</strong>
+                            <ul class="list-disc list-inside mb-3">
+                                ${plan.agenda.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                            <strong class="block mb-1">Materials Needed:</strong>
+                            <ul class="list-disc list-inside">
+                                ${plan.materials.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        `;
+                        removeTypingIndicator();
+                        typeMessage(formattedResponse, true);
+                    } else {
+                        throw new Error("Invalid response structure from API.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API call failed:", error);
+                    removeTypingIndicator();
+                    typeMessage("I'm sorry, I had trouble creating the event plan. Please try again with a different idea.", false);
+                } finally {
+                    geminiButton.innerHTML = originalButtonContent;
+                    geminiButton.disabled = false;
+                }
+            };
+
+
+            const getResponse = (query) => {
+                const lowerCaseQuery = query.toLowerCase().trim();
+                const knowledge = knowledgeBase[currentLanguage];
+                
+                if (lowerCaseQuery.includes('hello') || lowerCaseQuery.includes('hi') || lowerCaseQuery.includes('നമസ്കാരം')) {
+                    return knowledge['greeting'];
+                }
+
+                for (const key in knowledge) {
+                    const keywords = key.split('|');
+                    if (keywords.some(keyword => lowerCaseQuery.includes(keyword))) {
+                        return knowledge[key];
+                    }
+                }
+                return knowledge['default'];
+            };
+
+            const handleUserInput = () => {
+                const query = userInput.value.trim();
+                if (query === '') return;
+
+                addMessage(query, 'user');
+                userInput.value = '';
+
+                setTimeout(() => {
+                    const response = getResponse(query);
+                    typeMessage(response);
+                }, 300);
+            };
+            
+            const updateUIForLanguage = () => {
+                const langData = uiText[currentLanguage];
+                languageToggle.textContent = langData.langButton;
+                userInput.placeholder = langData.inputPlaceholder;
+                if(recognition) recognition.lang = currentLanguage === 'ml' ? 'ml-IN' : 'en-US';
+
+                quickInfoContainer.innerHTML = '';
+                langData.quickInfo.forEach(item => {
+                    const button = document.createElement('button');
+                    button.className = 'flex flex-col items-center space-y-1 text-center text-[--nss-blue] hover:text-[--nss-red] transition-colors text-xs font-medium';
+                    button.innerHTML = `
+                        <span class="text-2xl">${item.icon}</span>
+                        <span>${item.text}</span>
+                    `;
+                    button.onclick = () => {
+                        if (
+                            (currentLanguage === 'en' && item.text === 'Gallery') ||
+                            (currentLanguage === 'ml' && item.text === 'ഗാലറി')
+                        ) {
+                            showGalleryImages();
+                        } else {
+                            userInput.value = item.query;
+                            handleUserInput();
+                        }
+                    };
+                    quickInfoContainer.appendChild(button);
+                });
+            };
+
+            const toggleLanguage = () => {
+                currentLanguage = currentLanguage === 'en' ? 'ml' : 'en';
+                updateUIForLanguage();
+                const welcomeMessage = uiText[currentLanguage].welcome;
+                typeMessage(welcomeMessage);
+            };
+
+
+            // --- EVENT LISTENERS ---
+            sendButton.addEventListener('click', handleUserInput);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    // Check if the input is for gemini or regular chat
+                    if (userInput.value.trim().length > 0) {
+                         handleUserInput(); // Default to regular chat on Enter
+                    }
+                }
+            });
+
+            geminiButton.addEventListener('click', () => {
+                const query = userInput.value.trim();
+                if (query === '') {
+                    typeMessage("Please type an event idea in the text box first, then click the ✨ button.");
+                    return;
+                }
+                planEventWithGemini(query);
+                userInput.value = '';
+            });
+
+            languageToggle.addEventListener('click', toggleLanguage);
+
+            voiceOutputToggle.addEventListener('click', () => {
+                isVoiceOutputEnabled = !isVoiceOutputEnabled;
+                voiceOutputToggle.classList.toggle('text-[--nss-red]', !isVoiceOutputEnabled);
+                voiceOutputToggle.classList.toggle('text-gray-600', isVoiceOutputEnabled);
+                if (!isVoiceOutputEnabled) {
+                    window.speechSynthesis.cancel();
+                }
+            });
+
+            if (recognition) {
+                micButton.addEventListener('click', () => {
+                    if (isRecognizing) {
+                        recognition.stop();
+                        return;
+                    }
+                    recognition.start();
+                });
+
+                recognition.onstart = () => {
+                    isRecognizing = true;
+                    micButton.classList.add('mic-active', 'text-[--nss-red]');
+                };
+
+                recognition.onspeechend = () => {
+                    recognition.stop();
+                };
+                
+                recognition.onend = () => {
+                    isRecognizing = false;
+                    micButton.classList.remove('mic-active', 'text-[--nss-red]');
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    userInput.value = transcript;
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error("Speech recognition error", event.error);
+                }
+            } else {
+                micButton.style.display = 'none';
+            }
+
+
+            // --- INITIALIZATION ---
+            const initializeChat = () => {
+                updateUIForLanguage();
+                const welcomeMessage = uiText[currentLanguage].welcome;
+                typeMessage(welcomeMessage);
+            };
+
+            initializeChat();
+
+            // Function to show gallery images in chat
+            const showGalleryImages = () => {
+                const imageFiles = [
+                    'images/other.jpg',
+                    'images/other1.jpg',
+                    'images/other3.jpg',
+                    'images/other4.jpg'
+                ];
+                const imagesHtml = imageFiles.map(src =>
+                    `<img src="${src}" alt="NSS Gallery" class="w-32 h-32 object-cover rounded-lg m-1 inline-block border border-gray-200 shadow-sm" onerror="this.style.display='none';">`
+                ).join('');
+                typeMessage(`<div class="flex flex-wrap justify-start">${imagesHtml}</div>`, true);
+            };
+
+            // Example: Show gallery images on language toggle (for demo)
+            languageToggle.addEventListener('click', () => {
+                toggleLanguage();
+                showGalleryImages(); // Show images every time language is toggled
+            });
+        });
+    </script>
+</body>
+</html>
